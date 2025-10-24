@@ -22,7 +22,7 @@ A lightweight Python application that simulates human-like typing with natural v
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/natural-typing-simulator.git
+git clone https://github.com/KaesarWU/natural-typing-simulator.git
 cd natural-typing-simulator
 ```
 
