@@ -19,7 +19,7 @@ A sophisticated Python application that simulates human-like typing with customi
 - **Intelligent Pausing**: Longer pauses after sentences, medium pauses after clauses
 
 ### ⚙️ Fully Customizable
-- **WPM Range**: 10-500 WPM support
+- **WPM Range**: 10-500 WPM support (currently maxed at 94, needs debugging)
 - **Custom Shortcuts**: Rebind start/stop/clear to any keys
 - **Start Delay**: Configurable countdown before typing begins
 - **Persistent Settings**: Saves your preferences between sessions
