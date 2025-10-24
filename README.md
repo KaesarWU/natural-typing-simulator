@@ -45,7 +45,7 @@ pip install pyautogui
 
 3. **Run the application**:
 ```bash
-python natural_typing_simulator.py
+python natural-typing-simulator.py
 ```
 
 ## 🎮 Usage
