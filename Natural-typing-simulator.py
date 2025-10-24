@@ -103,9 +103,10 @@ class NaturalTypingSimulator:
         mode_label.grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
         
         self.mode_var = tk.StringVar(value=self.config["default_mode"])
-        mode_combo = ttk.Combobox(settings_frame, textvariable=self.mode_var, 
-                                 values=["natural", "competition"], width=12, state="readonly")
-        mode_combo.grid(row=0, column=1, sticky=tk.W, padx=(0, 15))
+        self.mode_combo = ttk.Combobox(settings_frame, textvariable=self.mode_var, 
+                                      values=["natural", "competition"], width=12, state="readonly")
+        self.mode_combo.grid(row=0, column=1, sticky=tk.W, padx=(0, 15))
+        self.mode_combo.bind('<<ComboboxSelected>>', self.on_mode_change)
         
         # WPM settings
         wpm_label = ttk.Label(settings_frame, text="Target WPM:")
@@ -124,20 +125,20 @@ class NaturalTypingSimulator:
         delay_entry.grid(row=0, column=5, sticky=tk.W)
         
         # Typo probability (only for natural mode)
-        typo_label = ttk.Label(settings_frame, text="Typo probability (%):")
-        typo_label.grid(row=1, column=0, sticky=tk.W, padx=(0, 5))
+        self.typo_label = ttk.Label(settings_frame, text="Typo probability (%):")
+        self.typo_label.grid(row=1, column=0, sticky=tk.W, padx=(0, 5))
         
         self.typo_var = tk.StringVar(value=str(self.config["default_typo_prob"]))
-        typo_entry = ttk.Entry(settings_frame, textvariable=self.typo_var, width=5)
-        typo_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 15))
+        self.typo_entry = ttk.Entry(settings_frame, textvariable=self.typo_var, width=5)
+        self.typo_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 15))
         
         # Synonym probability (only for natural mode)
-        synonym_label = ttk.Label(settings_frame, text="Synonym probability (%):")
-        synonym_label.grid(row=1, column=2, sticky=tk.W, padx=(0, 5))
+        self.synonym_label = ttk.Label(settings_frame, text="Synonym probability (%):")
+        self.synonym_label.grid(row=1, column=2, sticky=tk.W, padx=(0, 5))
         
         self.synonym_var = tk.StringVar(value=str(self.config["default_synonym_prob"]))
-        synonym_entry = ttk.Entry(settings_frame, textvariable=self.synonym_var, width=5)
-        synonym_entry.grid(row=1, column=3, sticky=tk.W, padx=(0, 15))
+        self.synonym_entry = ttk.Entry(settings_frame, textvariable=self.synonym_var, width=5)
+        self.synonym_entry.grid(row=1, column=3, sticky=tk.W, padx=(0, 15))
         
         # Settings button
         settings_btn = ttk.Button(settings_frame, text="⚙️", width=3, command=self.open_settings)
@@ -167,6 +168,33 @@ class NaturalTypingSimulator:
         self.status_var = tk.StringVar(value=f"Ready. {shortcut_info}")
         status_label = ttk.Label(main_frame, textvariable=self.status_var, foreground="blue")
         status_label.grid(row=6, column=0, columnspan=3, pady=(10, 0))
+        
+        # Initialize mode-specific UI state
+        self.on_mode_change()
+        
+    def on_mode_change(self, event=None):
+        """Enable/disable natural mode specific controls"""
+        is_natural_mode = self.mode_var.get() == "natural"
+        
+        # Update typo controls
+        self.typo_label.config(state=tk.NORMAL if is_natural_mode else tk.DISABLED)
+        self.typo_entry.config(state=tk.NORMAL if is_natural_mode else tk.DISABLED)
+        
+        # Update synonym controls
+        self.synonym_label.config(state=tk.NORMAL if is_natural_mode else tk.DISABLED)
+        self.synonym_entry.config(state=tk.NORMAL if is_natural_mode else tk.DISABLED)
+        
+        # Visual feedback
+        disabled_color = "gray"
+        normal_color = "black"
+        
+        self.typo_label.config(foreground=normal_color if is_natural_mode else disabled_color)
+        self.synonym_label.config(foreground=normal_color if is_natural_mode else disabled_color)
+        
+        # Update status
+        mode_name = "Natural" if is_natural_mode else "Competition"
+        features = "with typos, synonyms, and variations" if is_natural_mode else "pure consistent WPM"
+        self.status_var.set(f"Mode: {mode_name} - {features}")
         
     def bind_shortcuts(self):
         """Bind keyboard shortcuts based on configuration"""
@@ -281,21 +309,27 @@ class NaturalTypingSimulator:
             self.status_var.set("Please enter a valid delay.")
             return
             
-        try:
-            typo_prob = float(self.typo_var.get())
-            if typo_prob < 0 or typo_prob > 20:
-                raise ValueError("Typo probability should be between 0 and 20")
-        except ValueError:
-            self.status_var.set("Please enter a valid typo probability (0-20).")
-            return
-            
-        try:
-            synonym_prob = float(self.synonym_var.get())
-            if synonym_prob < 0 or synonym_prob > 20:
-                raise ValueError("Synonym probability should be between 0 and 20")
-        except ValueError:
-            self.status_var.set("Please enter a valid synonym probability (0-20).")
-            return
+        # Only validate natural mode settings if in natural mode
+        if self.mode_var.get() == "natural":
+            try:
+                typo_prob = float(self.typo_var.get())
+                if typo_prob < 0 or typo_prob > 20:
+                    raise ValueError("Typo probability should be between 0 and 20")
+            except ValueError:
+                self.status_var.set("Please enter a valid typo probability (0-20).")
+                return
+                
+            try:
+                synonym_prob = float(self.synonym_var.get())
+                if synonym_prob < 0 or synonym_prob > 20:
+                    raise ValueError("Synonym probability should be between 0 and 20")
+            except ValueError:
+                self.status_var.set("Please enter a valid synonym probability (0-20).")
+                return
+        else:
+            # Competition mode - force no typos or synonyms
+            typo_prob = 0
+            synonym_prob = 0
             
         self.is_typing = True
         self.start_button.config(state=tk.DISABLED)
@@ -317,7 +351,7 @@ class NaturalTypingSimulator:
         self.status_var.set("Typing stopped.")
         
     def get_synonyms(self):
-        """Return a comprehensive dictionary of synonyms"""
+        """Return a comprehensive dictionary of synonyms for NATURAL MODE ONLY"""
         return {
             'happy': ['joyful', 'cheerful', 'delighted', 'pleased', 'content', 'ecstatic', 'elated', 'glad', 'jubilant', 'thrilled'],
             'sad': ['unhappy', 'depressed', 'melancholy', 'gloomy', 'miserable', 'sorrowful', 'dejected', 'downcast', 'despondent', 'heartbroken'],
@@ -521,15 +555,16 @@ class NaturalTypingSimulator:
             'x': ['z', 's', 'd', 'c', ' '],
             'y': ['t', 'g', 'h', 'u', '6', '7'],
             'z': ['1', 'a', 's', 'x', ' '],
-            ' ': ['c', 'v', 'b', 'n', 'm', 'x', 'z'],  # Space bar near bottom row
+            ' ': ['c', 'v', 'b', 'n', 'm', 'x', 'z'],
         }
         
         char_lower = char.lower()
         if char_lower in adjacent_keys:
             return random.choice(adjacent_keys[char_lower])
-        return char  # Return original if no adjacent key mapping
+        return char
         
     def type_text(self, text, target_wpm, delay, typo_probability, synonym_probability, mode):
+        """Fixed timing system that strictly follows target WPM"""
         # Wait for the specified delay
         time.sleep(delay)
         
@@ -538,23 +573,20 @@ class NaturalTypingSimulator:
             
         self.root.after(0, lambda: self.status_var.set("Typing in progress..."))
         
-        # Calculate base time per character (in seconds) - FIXED WPM CALCULATION
-        base_time_per_char = 60.0 / (target_wpm * 5)  # 5 characters per word average
+        # Calculate base time per character (seconds per character)
+        # FIXED: Proper calculation for high WPM
+        base_time_per_char = 60.0 / (target_wpm * 5) if target_wpm > 0 else 0.1
         
         i = 0
-        synonyms = self.get_synonyms()
-        
-        # Natural mode variables
-        burst_mode = False
-        burst_chars_remaining = 0
-        burst_speed_multiplier = 0.5
-        thinking_pause = False
+        synonyms = self.get_synonyms() if mode == "natural" else {}
+        start_time = time.time()
+        characters_typed = 0
         
         while i < len(text) and self.is_typing:
             char = text[i]
             
             # Handle word boundaries for synonym replacement (Natural mode only)
-            if mode == "natural" and char.isalpha():
+            if mode == "natural" and char.isalpha() and synonym_probability > 0:
                 # Extract the current word
                 j = i
                 current_word = ""
@@ -569,114 +601,87 @@ class NaturalTypingSimulator:
                     
                     synonym = random.choice(synonyms[current_word.lower()])
                     
-                    # Type the synonym
+                    # Type the synonym quickly
                     for syn_char in synonym:
                         pyautogui.write(syn_char)
-                        time.sleep(base_time_per_char * 0.2)  # Very fast typing for synonym
+                        time.sleep(base_time_per_char * 0.1)  # Very fast typing
                     
-                    # Quick backspace to delete synonym
+                    # Wait a bit then delete the synonym
                     time.sleep(base_time_per_char * 0.3)
                     for _ in range(len(synonym)):
                         pyautogui.press('backspace')
-                        time.sleep(base_time_per_char * 0.1)
+                        time.sleep(base_time_per_char * 0.05)
                     
                     # Type the correct word
                     for word_char in current_word:
                         pyautogui.write(word_char)
-                        time.sleep(base_time_per_char * random.uniform(0.8, 1.2))
+                        # Use consistent timing for the correct word
+                        time.sleep(base_time_per_char)
                     
-                    i = j  # Skip the entire word
+                    i = j
+                    characters_typed += len(current_word)
                     continue
             
-            if mode == "natural":
-                # Natural mode with all realistic features
-                make_typo = (char.isalpha() or char == ' ') and random.random() < typo_probability
+            # Handle typos (Natural mode only)
+            if mode == "natural" and (char.isalpha() or char == ' ') and random.random() < typo_probability:
+                # Make a typo
+                typo_char = self.get_adjacent_key(char)
+                pyautogui.write(typo_char)
+                time.sleep(base_time_per_char * 0.3)
                 
-                if make_typo:
-                    # Make a typo with adjacent key
-                    typo_char = self.get_adjacent_key(char)
-                    pyautogui.write(typo_char)
-                    
-                    # Short pause realizing mistake
-                    time.sleep(base_time_per_char * random.uniform(0.3, 0.8))
-                    
-                    # Backspace to correct
-                    pyautogui.press('backspace')
-                    
-                    # Type correct character
-                    pyautogui.write(char)
-                    
-                    # Slightly longer pause after correction
-                    delay_time = base_time_per_char * random.uniform(1.2, 2.0)
-                    
-                else:
-                    # Normal typing with speed variations and bursts
-                    pyautogui.write(char)
-                    
-                    # Speed variations for natural mode
-                    if burst_mode:
-                        burst_chars_remaining -= 1
-                        if burst_chars_remaining <= 0:
-                            burst_mode = False
-                            # Longer pause after burst (thinking time)
-                            delay_time = base_time_per_char * random.uniform(2, 5)
-                            thinking_pause = True
-                        else:
-                            # Fast typing during burst (100+ WPM equivalent)
-                            burst_wpm_multiplier = random.uniform(1.5, 3.0)  # 1.5x to 3x faster
-                            delay_time = (base_time_per_char / burst_wpm_multiplier) * random.uniform(0.7, 1.3)
-                            thinking_pause = False
-                    
-                    else:
-                        # Check if we should start a burst
-                        if random.random() < 0.15 and char not in '.!?\n':  # 15% chance, not at sentence end
-                            burst_mode = True
-                            burst_chars_remaining = random.randint(4, 12)  # Longer bursts
-                            burst_speed_multiplier = random.uniform(1.5, 3.0)  # 100-300+ WPM during bursts
-                            delay_time = (base_time_per_char / burst_speed_multiplier) * random.uniform(0.8, 1.2)
-                            thinking_pause = False
-                        
-                        else:
-                            # Normal typing with natural variations
-                            if char in '.!?':  # Longer pause after sentences
-                                delay_time = base_time_per_char * random.uniform(6, 12)
-                                thinking_pause = True
-                            elif char in ',;:':  # Medium pause after clauses
-                                delay_time = base_time_per_char * random.uniform(2, 4)
-                                thinking_pause = False
-                            elif char == ' ':  # Slight pause after words
-                                delay_time = base_time_per_char * random.uniform(1.0, 2.0)
-                                thinking_pause = False
-                            elif char == '\n':  # Pause for new lines
-                                delay_time = base_time_per_char * random.uniform(3, 8)
-                                thinking_pause = True
-                            else:  # Normal typing with slight variations
-                                delay_time = base_time_per_char * random.uniform(0.7, 1.3)
-                                thinking_pause = False
-                            
-                            # Occasionally add a thinking pause (slow bursts)
-                            if not thinking_pause and random.random() < 0.03:  # 3% chance of thinking
-                                delay_time *= random.uniform(3, 8)
-                                thinking_pause = True
-            
-            else:  # Competition mode
-                # Pure WPM-based typing without inconsistencies
+                # Correct the typo
+                pyautogui.press('backspace')
+                time.sleep(base_time_per_char * 0.2)
+                
+                # Type correct character
                 pyautogui.write(char)
-                delay_time = base_time_per_char  # Consistent timing
+                delay_time = base_time_per_char
+                
+            else:
+                # Normal typing - COMPETITION MODE: 100% consistent, NATURAL: with variations
+                pyautogui.write(char)
+                if mode == "competition":
+                    # Competition mode: perfectly consistent timing
+                    delay_time = base_time_per_char
+                else:
+                    # Natural mode: variations around the target WPM
+                    if char in '.!?':  # Longer pause after sentences
+                        delay_time = base_time_per_char * random.uniform(3, 6)
+                    elif char in ',;:':  # Medium pause after clauses
+                        delay_time = base_time_per_char * random.uniform(1.5, 2.5)
+                    elif char == ' ':  # Slight pause after words
+                        delay_time = base_time_per_char * random.uniform(1.0, 1.5)
+                    elif char == '\n':  # Pause for new lines
+                        delay_time = base_time_per_char * random.uniform(2, 4)
+                    else:  # Normal typing with slight variations
+                        delay_time = base_time_per_char * random.uniform(0.8, 1.2)
+                    
+                    # Occasional bursts of speed (fast typing)
+                    if random.random() < 0.1:  # 10% chance of burst
+                        delay_time *= random.uniform(0.3, 0.6)  # 1.6x to 3.3x faster
+                    
+                    # Occasional thinking pauses
+                    if random.random() < 0.03:  # 3% chance of thinking pause
+                        delay_time *= random.uniform(2, 5)
             
             time.sleep(delay_time)
             i += 1
+            characters_typed += 1
             
-            # Update status occasionally
-            if i % 25 == 0 or i == len(text):
-                progress = int((i / len(text)) * 100)
-                current_wpm = int(60 / (delay_time * 5)) if delay_time > 0 else target_wpm
-                mode_status = f" ({current_wpm} WPM)" if mode == "natural" else ""
-                self.root.after(0, lambda p=progress, m=mode_status: 
-                              self.status_var.set(f"Typing... {p}% complete{m}"))
+            # Calculate and display real-time WPM
+            if characters_typed % 10 == 0 or i == len(text):
+                elapsed_time = time.time() - start_time
+                if elapsed_time > 0:
+                    current_wpm = (characters_typed / 5) / (elapsed_time / 60)
+                    progress = int((i / len(text)) * 100)
+                    mode_status = f" - Current: {int(current_wpm)} WPM" if mode == "natural" else f" - Target: {target_wpm} WPM"
+                    self.root.after(0, lambda p=progress, m=mode_status: 
+                                  self.status_var.set(f"Typing... {p}% complete{m}"))
         
         if self.is_typing:
-            self.root.after(0, lambda: self.status_var.set("Typing completed!"))
+            total_time = time.time() - start_time
+            final_wpm = (characters_typed / 5) / (total_time / 60) if total_time > 0 else 0
+            self.root.after(0, lambda: self.status_var.set(f"Typing completed! Final WPM: {int(final_wpm)}"))
             self.is_typing = False
             self.root.after(0, lambda: self.start_button.config(state=tk.NORMAL))
             self.root.after(0, lambda: self.stop_button.config(state=tk.DISABLED))
